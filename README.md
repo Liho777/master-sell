@@ -68,7 +68,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
    ```
 
 2. Импортируйте репозиторий на [vercel.com/new](https://vercel.com/new).
-3. Оставьте настройки по умолчанию: Framework Preset — Next.js, Build Command — `npm run build`, Output Directory — `dist`.
+3. Оставьте настройки по умолчанию: Framework Preset — Next.js, Build Command — `npm run build`, Output Directory — `out`.
 4. Нажмите Deploy.
 
 ### Подключение домена MasterSell.ru
@@ -84,8 +84,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 npm run build
 ```
 
-Сборка должна завершиться без ошибок, а в папке `dist/` должны появиться:
+Сборка должна завершиться без ошибок, а в папке `out/` должны появиться:
 
-- `dist/index.html` — главная страница;
-- `dist/privacy/index.html` — политика конфиденциальности;
-- `dist/offer/index.html` — оферта.
+- `out/index.html` — главная страница;
+- `out/privacy/index.html` — политика конфиденциальности;
+- `out/offer/index.html` — оферта.
