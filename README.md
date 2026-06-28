@@ -1,109 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MasterSell
 
-## Getting Started
+Сервис для генерации SEO-текстов и AI-концептов инфографики для карточек товаров на маркетплейсах Wildberries, Ozon и Яндекс.Маркет.
 
-First, run the development server:
+## Технологии
+
+- Next.js 16 (App Router)
+- React 19 + TypeScript
+- Tailwind CSS 4
+- Prisma 7 + PostgreSQL
+- GigaChat API (Сбер) — AI-провайдер
+
+## Локальная разработка на Windows
+
+### 1. Установите PostgreSQL
+
+1. Скачайте установщик с https://www.postgresql.org/download/windows/
+2. Установите PostgreSQL 16+. В процессе запомните пароль суперпользователя `postgres`.
+3. Убедитесь, что `psql` добавлен в PATH (обычно `C:\Program Files\PostgreSQL\16\bin`).
+
+### 2. Создайте базу данных
+
+Откройте PowerShell или CMD и выполните:
+
+```bash
+psql -U postgres -f scripts/init-db.sql
+```
+
+Введите пароль суперпользователя `postgres`.
+
+Это создаст:
+- пользователя `mastersell`
+- базу `mastersell`
+
+### 3. Настройте переменные окружения
+
+Создайте файл `.env.local` в корне проекта:
+
+```env
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+DATABASE_URL=postgresql://mastersell:mastersell_dev_pass@localhost:5432/mastersell
+
+# GigaChat API (Sber)
+# Authorization key = Base64(client_id:client_secret), или укажите пару ID + SECRET
+GIGACHAT_CREDENTIALS=your_base64_client_id_client_secret
+# или
+GIGACHAT_CLIENT_ID=your_gigachat_client_id
+GIGACHAT_CLIENT_SECRET=your_gigachat_client_secret
+```
+
+### 4. Установите зависимости
+
+```bash
+npm install
+```
+
+### 5. Примените миграции Prisma
+
+```bash
+npm run db:migrate
+```
+
+При первом запуске введите имя миграции, например: `init`
+
+### 6. Запустите dev-сервер
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## MasterSell — подготовка к публикации
-
-### Что уже настроено
-
-- Лендинг собирается статически (`output: 'export'`) и готов к деплою на Vercel.
-- Форма waitlist встроена через Яндекс.Формы; данные хранятся на серверах в РФ.
-- Добавлены страницы:
-  - `/privacy` — Политика конфиденциальности (152-ФЗ);
-  - `/offer` — Публичная оферта.
-
-### Перед деплоем заполните плейсхолдеры
-
-В файлах `app/privacy/page.tsx` и `app/offer/page.tsx` замените плейсхолдеры в квадратных скобках на реальные реквизиты оператора:
-
-- название ИП / ООО / самозанятость;
-- ИНН, ОГРН / ОГРНИП;
-- юридический / почтовый адрес;
-- контактный email.
-
-### Деплой на Vercel
-
-1. Создайте репозиторий на GitHub и загрузите проект:
-
-   ```bash
-   git init
-   git add .
-   git commit -m "init"
-   git branch -M main
-   git remote add origin https://github.com/ВАШ_АККАУНТ/master-sell.git
-   git push -u origin main
-   ```
-
-2. Импортируйте репозиторий на [vercel.com/new](https://vercel.com/new).
-3. Оставьте настройки по умолчанию: Framework Preset — Next.js, Build Command — `npm run build`, Output Directory — `out`.
-4. Нажмите Deploy.
-
-### Домены проекта
-
-Основные домены:
-
-- `master-sell.ru`
-- `мастер-селл.рф` (punycode: `xn----7sbpb4aab8ahdh.xn--p1ai`)
-
-#### Деплой на Vercel (альтернативный вариант)
-
-1. Импортируйте репозиторий на [vercel.com/new](https://vercel.com/new).
-2. В настройках проекта перейдите в раздел **Domains** и добавьте нужные домены.
-3. Следуйте инструкциям Vercel: добавьте указанные DNS-записи (`A` и/или `CNAME`) в панели регистратора.
-4. Обычно домен начинает работать в течение нескольких минут–часов.
-
-#### Деплой на shared-хостинг (SprintHost)
-
-1. Выполните локальную сборку:
-
-   ```bash
-   npm run build
-   ```
-
-2. Содержимое папки `out/` загрузите в `public_html/` нужного домена на хостинге.
-3. Убедитесь, что оба домена настроены как один сайт с алиасом, если используется кириллический и латинский варианты.
-
-### Проверка перед публикацией
+## Полезные команды
 
 ```bash
-npm run build
+npm run dev          # dev-сервер
+npm run build        # production-сборка
+npm run db:migrate   # новая миграция Prisma
+npm run db:generate  # перегенерировать клиент Prisma
+npm run db:studio    # визуальный редактор базы
 ```
 
-Сборка должна завершиться без ошибок, а в папке `out/` должны появиться:
+## Архитектура авторизации
 
-- `out/index.html` — главная страница;
-- `out/privacy/index.html` — политика конфиденциальности;
-- `out/offer/index.html` — оферта.
+- Пароли хешируются `bcrypt`.
+- Сессии хранятся в HTTP-only cookie `session_token`.
+- Проверка сессии происходит в `proxy.ts` (Next.js 16) и в `lib/auth.ts`.
+- Никаких внешних auth-сервисов не используется.
+
+## Требования 152-ФЗ
+
+- Все персональные данные пользователей хранятся в PostgreSQL на сервере в РФ.
+- AI-провайдер — GigaChat API (Сбер), работает внутри РФ.
+- Форма waitlist на лендинге — Яндекс.Формы, данные в РФ.
+
+## Продакшн
+
+Целевая инфраструктура: VDS **SprintBox** (sprintbox.ru) — российский хостинг.
+Инструкция по продакшн-деплою будет добавлена позже.
+
+## Заметки
+
+- Реквизиты оператора в `app/privacy/page.tsx` и `app/offer/page.tsx` заполняются после регистрации ИП.
+- Домены проекта: `master-sell.ru` и `мастер-селл.рф`.
