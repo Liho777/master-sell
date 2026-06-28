@@ -63,7 +63,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
    git add .
    git commit -m "init"
    git branch -M main
-   git remote add origin https://github.com/ВАШ_АККАУНТ/mastersell.git
+   git remote add origin https://github.com/ВАШ_АККАУНТ/master-sell.git
    git push -u origin main
    ```
 
@@ -71,12 +71,30 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 3. Оставьте настройки по умолчанию: Framework Preset — Next.js, Build Command — `npm run build`, Output Directory — `out`.
 4. Нажмите Deploy.
 
-### Подключение домена MasterSell.ru
+### Домены проекта
 
-1. Купите домен `MasterSell.ru` у регистратора (например, REG.ru, Beget, Timeweb).
-2. В настройках проекта на Vercel перейдите в раздел **Domains** и добавьте `MasterSell.ru`.
+Основные домены:
+
+- `master-sell.ru`
+- `мастер-селл.рф` (punycode: `xn----7sbpb4aab8ahdh.xn--p1ai`)
+
+#### Деплой на Vercel (альтернативный вариант)
+
+1. Импортируйте репозиторий на [vercel.com/new](https://vercel.com/new).
+2. В настройках проекта перейдите в раздел **Domains** и добавьте нужные домены.
 3. Следуйте инструкциям Vercel: добавьте указанные DNS-записи (`A` и/или `CNAME`) в панели регистратора.
 4. Обычно домен начинает работать в течение нескольких минут–часов.
+
+#### Деплой на shared-хостинг (SprintHost)
+
+1. Выполните локальную сборку:
+
+   ```bash
+   npm run build
+   ```
+
+2. Содержимое папки `out/` загрузите в `public_html/` нужного домена на хостинге.
+3. Убедитесь, что оба домена настроены как один сайт с алиасом, если используется кириллический и латинский варианты.
 
 ### Проверка перед публикацией
 

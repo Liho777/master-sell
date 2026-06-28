@@ -24,10 +24,10 @@ export default function PrivacyPage() {
             определяет порядок сбора, хранения, передачи и защиты персональных
             данных пользователей сайта{" "}
             <a
-              href="https://mastersell.ru"
+              href="https://master-sell.ru"
               className="text-brand-700 hover:underline"
             >
-              MasterSell.ru
+              master-sell.ru
             </a>
             .
           </p>
@@ -143,10 +143,10 @@ export default function PrivacyPage() {
               Оператор вправе вносить изменения в настоящую Политику. Актуальная
               версия всегда доступна по адресу{" "}
               <a
-                href="https://mastersell.ru/privacy"
+                href="https://master-sell.ru/privacy"
                 className="text-brand-700 hover:underline"
               >
-                mastersell.ru/privacy
+                master-sell.ru/privacy
               </a>
               .
             </p>
