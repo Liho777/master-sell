@@ -24,10 +24,10 @@ export default function SignupPage() {
               {state.success}
             </div>
             <Link
-              href="/login"
+              href="/dashboard"
               className="inline-block w-full py-3 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition text-center"
             >
-              Перейти ко входу
+              Перейти в кабинет
             </Link>
           </div>
         ) : (

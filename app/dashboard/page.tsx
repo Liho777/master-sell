@@ -1,37 +1,30 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { logout } from "../logout/actions";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .single();
+  const profile = await prisma.profile.findUnique({
+    where: { userId: user.id },
+  });
 
-  const { data: subscription } = await supabase
-    .from("subscriptions")
-    .select("tier")
-    .eq("user_id", user.id)
-    .single();
+  const subscription = await prisma.subscription.findFirst({
+    where: { userId: user.id, isActive: true },
+  });
 
-  const { data: recentGenerations } = await supabase
-    .from("generations")
-    .select("id, type, status, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const recentGenerations = await prisma.generation.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    select: { id: true, type: true, status: true, createdAt: true },
+  });
 
   const tierLabels: Record<string, string> = {
     start: "Старт",
@@ -73,7 +66,7 @@ export default async function DashboardPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-10">
             <h1 className="text-3xl font-bold text-slate-900 mb-2">
-              Привет, {profile?.full_name || user.email}!
+              Привет, {profile?.fullName || user.email}!
             </h1>
             <p className="text-slate-600">
               Тариф:{" "}
@@ -138,7 +131,7 @@ export default async function DashboardPage() {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
             <h2 className="text-xl font-bold mb-4">Последние генерации</h2>
 
-            {recentGenerations && recentGenerations.length > 0 ? (
+            {recentGenerations.length > 0 ? (
               <ul className="divide-y divide-slate-100">
                 {recentGenerations.map((gen) => (
                   <li key={gen.id} className="py-4 flex items-center justify-between">
@@ -147,7 +140,7 @@ export default async function DashboardPage() {
                         {gen.type === "text" ? "Текст" : "Изображение"}
                       </span>
                       <span className="text-slate-600 text-sm">
-                        {new Date(gen.created_at).toLocaleDateString("ru-RU")}
+                        {gen.createdAt.toLocaleDateString("ru-RU")}
                       </span>
                     </div>
                     <span className="text-sm text-slate-500 capitalize">{gen.status}</span>

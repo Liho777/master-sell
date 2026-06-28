@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 import { createGigaChatClient } from "@/lib/gigachat";
 
 const DAILY_LIMITS: Record<
@@ -12,10 +13,10 @@ const DAILY_LIMITS: Record<
   agency: { text: Infinity, image: Infinity },
 };
 
-function startOfDayIso() {
+function startOfDay() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+  return d;
 }
 
 function parseJsonFromAi(text: string): unknown {
@@ -27,14 +28,7 @@ function parseJsonFromAi(text: string): unknown {
 }
 
 export async function generateText(prevState: unknown, formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "Требуется авторизация" };
-  }
+  const user = await requireAuth();
 
   const productName = (formData.get("productName") as string).trim();
   const category = (formData.get("category") as string).trim();
@@ -45,11 +39,9 @@ export async function generateText(prevState: unknown, formData: FormData) {
     return { error: "Укажите название и категорию товара" };
   }
 
-  const { data: subscription } = await supabase
-    .from("subscriptions")
-    .select("tier")
-    .eq("user_id", user.id)
-    .single();
+  const subscription = await prisma.subscription.findFirst({
+    where: { userId: user.id, isActive: true },
+  });
 
   const tier = subscription?.tier || "start";
   const limits = DAILY_LIMITS[tier];
@@ -58,33 +50,28 @@ export async function generateText(prevState: unknown, formData: FormData) {
     return { error: "Не удалось определить тариф" };
   }
 
-  const { count } = await supabase
-    .from("generations")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("type", "text")
-    .gte("created_at", startOfDayIso());
+  const count = await prisma.generation.count({
+    where: {
+      userId: user.id,
+      type: "text",
+      createdAt: { gte: startOfDay() },
+    },
+  });
 
-  if (count !== null && count >= limits.text) {
+  if (count >= limits.text) {
     return {
       error: `Достигнут дневной лимит генераций текста (${limits.text}). Обновите тариф.`,
     };
   }
 
-  const { data: generation, error: insertError } = await supabase
-    .from("generations")
-    .insert({
-      user_id: user.id,
+  const generation = await prisma.generation.create({
+    data: {
+      userId: user.id,
       type: "text",
       status: "processing",
-      prompt_input: JSON.stringify({ productName, category, features, marketplace }),
-    })
-    .select("id")
-    .single();
-
-  if (insertError || !generation) {
-    return { error: "Не удалось создать задачу генерации" };
-  }
+      promptInput: JSON.stringify({ productName, category, features, marketplace }),
+    },
+  });
 
   try {
     const client = createGigaChatClient();
@@ -114,7 +101,7 @@ export async function generateText(prevState: unknown, formData: FormData) {
 
     const raw =
       response.choices?.[0]?.message?.content ||
-      "{\"title\":\"\",\"description\":\"\",\"keywords\":[]}";
+      '{"title":"","description":"","keywords":[]}';
 
     const parsed = parseJsonFromAi(raw) as {
       title?: string;
@@ -128,22 +115,19 @@ export async function generateText(prevState: unknown, formData: FormData) {
       keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
     };
 
-    await supabase
-      .from("generations")
-      .update({
-        status: "completed",
-        result_data: result,
-      })
-      .eq("id", generation.id);
+    await prisma.generation.update({
+      where: { id: generation.id },
+      data: { status: "completed", resultData: result },
+    });
 
     return { success: true, result };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Ошибка генерации";
 
-    await supabase
-      .from("generations")
-      .update({ status: "failed", result_data: { error: message } })
-      .eq("id", generation.id);
+    await prisma.generation.update({
+      where: { id: generation.id },
+      data: { status: "failed", resultData: { error: message } },
+    });
 
     return { error: message };
   }

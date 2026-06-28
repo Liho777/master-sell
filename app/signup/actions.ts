@@ -1,9 +1,10 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
+import { hashPassword, createSession } from "@/lib/auth";
 
 export async function signup(prevState: unknown, formData: FormData) {
-  const email = formData.get("email") as string;
+  const email = (formData.get("email") as string).trim().toLowerCase();
   const password = formData.get("password") as string;
   const confirm = formData.get("confirm") as string;
 
@@ -19,20 +20,30 @@ export async function signup(prevState: unknown, formData: FormData) {
     return { error: "Пароль должен быть не короче 6 символов" };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const existing = await prisma.user.findUnique({
+    where: { email },
+  });
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${siteUrl}/auth/callback`,
+  if (existing) {
+    return { error: "Пользователь с таким email уже существует" };
+  }
+
+  const hashed = await hashPassword(password);
+
+  const user = await prisma.user.create({
+    data: {
+      email,
+      password: hashed,
+      subscriptions: {
+        create: {
+          tier: "start",
+          isActive: true,
+        },
+      },
     },
   });
 
-  if (error) {
-    return { error: error.message };
-  }
+  await createSession(user.id);
 
-  return { success: "Проверьте email и перейдите по ссылке для подтверждения регистрации." };
+  return { success: "Аккаунт создан. Вы вошли автоматически." };
 }
