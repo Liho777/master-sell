@@ -140,7 +140,7 @@ export default function GenerateImageClientPage({
               disabled={isPending}
               className="w-full py-3 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition disabled:opacity-50"
             >
-              {isPending ? "Анализ фото..." : "Создать концепт"}
+              {isPending ? "Создание инфографики..." : "Создать инфографику"}
             </button>
           </form>
 

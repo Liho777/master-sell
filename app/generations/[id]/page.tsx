@@ -74,7 +74,11 @@ export default async function GenerationPage({ params }: PageProps) {
 
           <div className="mt-4 mb-8">
             <h1 className="text-3xl font-bold text-slate-900">
-              {generation.type === "text" ? "Генерация текста" : "Концепт инфографики"}
+              {generation.type === "text"
+                ? "Генерация текста"
+                : imageUrl
+                ? "Инфографика"
+                : "Концепт инфографики"}
             </h1>
             <p className="text-slate-500 mt-1">
               {generation.createdAt.toLocaleDateString("ru-RU", {
@@ -179,9 +183,18 @@ export default async function GenerationPage({ params }: PageProps) {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 space-y-8">
               {imageUrl && (
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                    Готовое изображение
-                  </h2>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                      Готовое изображение
+                    </h2>
+                    <a
+                      href={imageUrl}
+                      download
+                      className="text-sm font-medium text-brand-700 hover:text-brand-800"
+                    >
+                      Скачать PNG
+                    </a>
+                  </div>
                   <img
                     src={imageUrl}
                     alt="Инфографика"
