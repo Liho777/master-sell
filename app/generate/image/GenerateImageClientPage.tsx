@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { generateImageConcept } from "./actions";
+import { MarketplaceSelector } from "../../components/MarketplaceSelector";
 
 interface GenerateImageClientPageProps {
   projects: { id: string; name: string }[];
@@ -104,6 +105,13 @@ export default function GenerateImageClientPage({
                 placeholder="Например: активное шумоподавление, 30 часов автономной работы..."
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition resize-none"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Маркетплейс *
+              </label>
+              <MarketplaceSelector name="marketplace" />
             </div>
 
             {projects.length > 0 && (

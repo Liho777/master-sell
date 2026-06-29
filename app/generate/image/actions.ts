@@ -34,11 +34,16 @@ export async function generateImageConcept(
 
   const productName = (formData.get("productName") as string).trim();
   const features = (formData.get("features") as string).trim();
+  const marketplace = (formData.get("marketplace") as string).trim();
   const imageFile = formData.get("image") as File | null;
   const projectId = (formData.get("projectId") as string) || undefined;
 
   if (!productName) {
     return { error: "Укажите название товара" };
+  }
+
+  if (!marketplace) {
+    return { error: "Выберите маркетплейс" };
   }
 
   if (!imageFile || imageFile.size === 0) {
@@ -62,7 +67,7 @@ export async function generateImageConcept(
       projectId,
       type: "image",
       status: "processing",
-      promptInput: JSON.stringify({ productName, features, fileName: imageFile.name }),
+      promptInput: JSON.stringify({ productName, features, marketplace, fileName: imageFile.name }),
     },
   });
 
@@ -74,9 +79,10 @@ export async function generateImageConcept(
     const systemPrompt = `Ты — дизайнер инфографики для карточек товаров на маркетплейсах Wildberries, Ozon, Яндекс.Маркет и Авито. Ты анализируешь фото товара и предлагаешь структуру инфографики. Отвечай строго в JSON-формате без пояснений.`;
 
     const userPrompt = `Проанализируй фото товара "${productName}".
+Маркетплейс: ${marketplace}.
 Особенности: ${features || "не указаны"}.
 
-Предложи структуру инфографики для карточки товара. Верни результат строго в JSON:
+Предложи структуру инфографики для карточки товара под выбранный маркетплейс. Верни результат строго в JSON:
 {
   "concept": "краткое описание визуальной концепции",
   "colorScheme": ["#HEX1", "#HEX2", "#HEX3"],
@@ -124,6 +130,7 @@ export async function generateImageConcept(
       layout: parsed.layout || "",
       callToAction: parsed.callToAction || "",
       productName,
+      marketplace,
     };
 
     const productImageBase64 = await fileToBase64(imageFile);

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { generateText } from "./actions";
 import { CopyTextButton } from "../../generations/[id]/CopyTextButton";
+import { MarketplaceSelector } from "../../components/MarketplaceSelector";
 
 interface GenerateTextClientPageProps {
   projects: { id: string; name: string }[];
@@ -93,24 +94,11 @@ export default function GenerateTextClientPage({
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="marketplace"
-                  className="block text-sm font-medium text-slate-700 mb-1"
-                >
-                  Маркетплейс
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Маркетплейс *
                 </label>
-                <select
-                  id="marketplace"
-                  name="marketplace"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition bg-white"
-                >
-                  <option value="">Любой</option>
-                  <option value="Wildberries">Wildberries</option>
-                  <option value="Ozon">Ozon</option>
-                  <option value="Яндекс.Маркет">Яндекс.Маркет</option>
-                  <option value="Авито">Авито</option>
-                </select>
+                <MarketplaceSelector name="marketplace" />
               </div>
             </div>
 
