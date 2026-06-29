@@ -3,21 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { createGigaChatClient } from "@/lib/gigachat";
-
-const DAILY_LIMITS: Record<
-  string,
-  { text: number; image: number } | undefined
-> = {
-  start: { text: 3, image: 1 },
-  pro: { text: 100, image: 50 },
-  agency: { text: Infinity, image: Infinity },
-};
-
-function startOfDay() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+import { checkTextLimit } from "@/lib/limits";
 
 function parseJsonFromAi(text: string): unknown {
   const cleaned = text
@@ -34,39 +20,23 @@ export async function generateText(prevState: unknown, formData: FormData) {
   const category = (formData.get("category") as string).trim();
   const features = (formData.get("features") as string).trim();
   const marketplace = (formData.get("marketplace") as string).trim();
+  const projectId = (formData.get("projectId") as string) || undefined;
 
   if (!productName || !category) {
     return { error: "Укажите название и категорию товара" };
   }
 
-  const subscription = await prisma.subscription.findFirst({
-    where: { userId: user.id, isActive: true },
-  });
-
-  const tier = subscription?.tier || "start";
-  const limits = DAILY_LIMITS[tier];
-
-  if (!limits) {
-    return { error: "Не удалось определить тариф" };
-  }
-
-  const count = await prisma.generation.count({
-    where: {
-      userId: user.id,
-      type: "text",
-      createdAt: { gte: startOfDay() },
-    },
-  });
-
-  if (count >= limits.text) {
-    return {
-      error: `Достигнут дневной лимит генераций текста (${limits.text}). Обновите тариф.`,
-    };
+  try {
+    await checkTextLimit(user.id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Ошибка проверки лимита";
+    return { error: message };
   }
 
   const generation = await prisma.generation.create({
     data: {
       userId: user.id,
+      projectId,
       type: "text",
       status: "processing",
       promptInput: JSON.stringify({ productName, category, features, marketplace }),
@@ -76,7 +46,7 @@ export async function generateText(prevState: unknown, formData: FormData) {
   try {
     const client = createGigaChatClient();
 
-    const systemPrompt = `Ты — эксперт по SEO-карточкам товаров на маркетплейсах Wildberries, Ozon и Яндекс.Маркет. Твоя задача — создавать продающие тексты карточек товара. Отвечай строго в JSON-формате без пояснений.`;
+    const systemPrompt = `Ты — эксперт по продающим карточкам товаров на маркетплейсах Wildberries, Ozon, Яндекс.Маркет и Авито. Твоя задача — создавать продающие тексты карточек товара. Отвечай строго в JSON-формате без пояснений.`;
 
     const userPrompt = `Создай SEO-оптимизированную карточку товара.
 
@@ -87,8 +57,8 @@ export async function generateText(prevState: unknown, formData: FormData) {
 
 Верни результат строго в JSON:
 {
-  "title": "короткий продающий заголовок, до 60 символов",
-  "description": "описание товара с ключевыми словами, 2-3 абзаца",
+  "title": "короткий продающий заголовок, до 60 символов. Для Авито — чёткий заголовок с ключевыми словами без лишних эпитетов",
+  "description": "описание товара с ключевыми словами, 2-3 абзаца. Для Авито — информативное, без перегрузки emoji, с акцентом на состояние и характеристики",
   "keywords": ["ключ 1", "ключ 2", "ключ 3", "ключ 4", "ключ 5"]
 }`;
 
@@ -120,7 +90,7 @@ export async function generateText(prevState: unknown, formData: FormData) {
       data: { status: "completed", resultData: result },
     });
 
-    return { success: true, result };
+    return { success: true, result, generationId: generation.id };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Ошибка генерации";
 

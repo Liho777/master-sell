@@ -3,21 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { createGigaChatClient } from "@/lib/gigachat";
-
-const DAILY_LIMITS: Record<
-  string,
-  { text: number; image: number } | undefined
-> = {
-  start: { text: 3, image: 1 },
-  pro: { text: 100, image: 50 },
-  agency: { text: Infinity, image: Infinity },
-};
-
-function startOfDay() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+import { checkImageLimit } from "@/lib/limits";
+import { renderInfographic, InfographicConcept } from "@/lib/infographic";
 
 function parseJsonFromAi(text: string): unknown {
   const cleaned = text
@@ -25,6 +12,18 @@ function parseJsonFromAi(text: string): unknown {
     .replace(/```/g, "")
     .trim();
   return JSON.parse(cleaned);
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      resolve(result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 export async function generateImageConcept(
@@ -36,6 +35,7 @@ export async function generateImageConcept(
   const productName = (formData.get("productName") as string).trim();
   const features = (formData.get("features") as string).trim();
   const imageFile = formData.get("image") as File | null;
+  const projectId = (formData.get("projectId") as string) || undefined;
 
   if (!productName) {
     return { error: "Укажите название товара" };
@@ -49,34 +49,17 @@ export async function generateImageConcept(
     return { error: "Фото не должно превышать 5 МБ" };
   }
 
-  const subscription = await prisma.subscription.findFirst({
-    where: { userId: user.id, isActive: true },
-  });
-
-  const tier = subscription?.tier || "start";
-  const limits = DAILY_LIMITS[tier];
-
-  if (!limits) {
-    return { error: "Не удалось определить тариф" };
-  }
-
-  const count = await prisma.generation.count({
-    where: {
-      userId: user.id,
-      type: "image",
-      createdAt: { gte: startOfDay() },
-    },
-  });
-
-  if (count >= limits.image) {
-    return {
-      error: `Достигнут дневной лимит генераций изображений (${limits.image}). Обновите тариф.`,
-    };
+  try {
+    await checkImageLimit(user.id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Ошибка проверки лимита";
+    return { error: message };
   }
 
   const generation = await prisma.generation.create({
     data: {
       userId: user.id,
+      projectId,
       type: "image",
       status: "processing",
       promptInput: JSON.stringify({ productName, features, fileName: imageFile.name }),
@@ -88,7 +71,7 @@ export async function generateImageConcept(
 
     const uploaded = await client.uploadFile(imageFile, "general");
 
-    const systemPrompt = `Ты — дизайнер инфографики для карточек товаров на маркетплейсах Wildberries, Ozon и Яндекс.Маркет. Ты анализируешь фото товара и предлагаешь структуру инфографики. Отвечай строго в JSON-формате без пояснений.`;
+    const systemPrompt = `Ты — дизайнер инфографики для карточек товаров на маркетплейсах Wildberries, Ozon, Яндекс.Маркет и Авито. Ты анализируешь фото товара и предлагаешь структуру инфографики. Отвечай строго в JSON-формате без пояснений.`;
 
     const userPrompt = `Проанализируй фото товара "${productName}".
 Особенности: ${features || "не указаны"}.
@@ -129,7 +112,7 @@ export async function generateImageConcept(
       callToAction?: string;
     };
 
-    const result = {
+    const concept: InfographicConcept = {
       concept: parsed.concept || "",
       colorScheme: Array.isArray(parsed.colorScheme) ? parsed.colorScheme : [],
       badges: Array.isArray(parsed.badges)
@@ -140,6 +123,15 @@ export async function generateImageConcept(
         : [],
       layout: parsed.layout || "",
       callToAction: parsed.callToAction || "",
+      productName,
+    };
+
+    const productImageBase64 = await fileToBase64(imageFile);
+    const { url } = await renderInfographic(concept, { productImageBase64 });
+
+    const result = {
+      ...concept,
+      imageUrl: url,
     };
 
     await prisma.generation.update({
@@ -147,7 +139,7 @@ export async function generateImageConcept(
       data: { status: "completed", resultData: result },
     });
 
-    return { success: true, result };
+    return { success: true, result, generationId: generation.id };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Ошибка генерации";
 

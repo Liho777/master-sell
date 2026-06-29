@@ -1,9 +1,13 @@
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
+import { getCurrentUser } from "@/lib/auth";
+import Link from "next/link";
 
 const BASE_SIGNUP_COUNT = 127;
 
-export default function Home() {
+export default async function Home() {
+  const user = await getCurrentUser();
+
   return (
     <div className="antialiased text-slate-900 bg-white min-h-full">
       <Header />
@@ -23,16 +27,25 @@ export default function Home() {
               </h1>
               <p className="text-lg sm:text-xl text-slate-600 mb-8 leading-relaxed">
                 Генерируйте продающие SEO-тексты и профессиональную инфографику
-                для Wildberries, Ozon и Яндекс.Маркет за минуты — без дизайнера
+                для Wildberries, Ozon, Яндекс.Маркет и Авито за минуты — без дизайнера
                 и копирайтера.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <a
-                  href="#waitlist"
-                  className="inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition shadow-lg shadow-brand-200"
-                >
-                  Попасть в список ожидания
-                </a>
+                {user ? (
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition shadow-lg shadow-brand-200"
+                  >
+                    Перейти в кабинет
+                  </Link>
+                ) : (
+                  <a
+                    href="#waitlist"
+                    className="inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition shadow-lg shadow-brand-200"
+                  >
+                    Попасть в список ожидания
+                  </a>
+                )}
                 <a
                   href="#features"
                   className="inline-flex items-center justify-center px-6 py-3.5 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:border-brand-300 hover:text-brand-700 transition"

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getUserLimits, TIER_LABELS } from "@/lib/limits";
 import { logout } from "../logout/actions";
 
 export default async function DashboardPage() {
@@ -11,26 +12,27 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const profile = await prisma.profile.findUnique({
-    where: { userId: user.id },
-  });
+  const [profile, subscription, limits, recentGenerations] = await Promise.all([
+    prisma.profile.findUnique({ where: { userId: user.id } }),
+    prisma.subscription.findFirst({ where: { userId: user.id, isActive: true } }),
+    getUserLimits(user.id),
+    prisma.generation.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { id: true, type: true, status: true, createdAt: true },
+    }),
+  ]);
 
-  const subscription = await prisma.subscription.findFirst({
-    where: { userId: user.id, isActive: true },
-  });
-
-  const recentGenerations = await prisma.generation.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    select: { id: true, type: true, status: true, createdAt: true },
-  });
-
-  const tierLabels: Record<string, string> = {
-    start: "Старт",
-    pro: "Профи",
-    agency: "Агентство",
+  const statusLabels: Record<string, string> = {
+    pending: "В очереди",
+    processing: "В обработке",
+    completed: "Готово",
+    failed: "Ошибка",
   };
+
+  const formatRemaining = (value: number) =>
+    value === Infinity ? "∞" : value.toString();
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -71,9 +73,30 @@ export default async function DashboardPage() {
             <p className="text-slate-600">
               Тариф:{" "}
               <span className="font-semibold text-brand-700">
-                {tierLabels[subscription?.tier || "start"] || "Старт"}
+                {TIER_LABELS[subscription?.tier || "start"] || "Старт"}
               </span>
             </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <p className="text-sm text-slate-500 mb-1">Текстов сегодня</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {limits.textUsed} / {formatRemaining(limits.textLimit)}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Осталось {formatRemaining(limits.textRemaining)}
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <p className="text-sm text-slate-500 mb-1">Инфографик сегодня</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {limits.imageUsed} / {formatRemaining(limits.imageLimit)}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Осталось {formatRemaining(limits.imageRemaining)}
+              </p>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 mb-12">
@@ -123,13 +146,23 @@ export default async function DashboardPage() {
               </div>
               <h2 className="text-xl font-bold mb-2">Генерация инфографики</h2>
               <p className="text-slate-600">
-                Готовые изображения для карточки на основе шаблонов.
+                AI-концепт инфографики по фото товара.
               </p>
             </Link>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
-            <h2 className="text-xl font-bold mb-4">Последние генерации</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Последние генерации</h2>
+              {recentGenerations.length > 0 && (
+                <Link
+                  href="/generations"
+                  className="text-sm text-brand-700 hover:text-brand-800 font-medium"
+                >
+                  Вся история →
+                </Link>
+              )}
+            </div>
 
             {recentGenerations.length > 0 ? (
               <ul className="divide-y divide-slate-100">
@@ -142,8 +175,24 @@ export default async function DashboardPage() {
                       <span className="text-slate-600 text-sm">
                         {gen.createdAt.toLocaleDateString("ru-RU")}
                       </span>
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded ${
+                          gen.status === "completed"
+                            ? "bg-green-100 text-green-700"
+                            : gen.status === "failed"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {statusLabels[gen.status] || gen.status}
+                      </span>
                     </div>
-                    <span className="text-sm text-slate-500 capitalize">{gen.status}</span>
+                    <Link
+                      href={`/generations/${gen.id}`}
+                      className="text-sm text-brand-700 hover:text-brand-800 font-medium"
+                    >
+                      Открыть →
+                    </Link>
                   </li>
                 ))}
               </ul>
